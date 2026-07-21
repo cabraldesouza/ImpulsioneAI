@@ -13,7 +13,7 @@
 <style>
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
-  body { margin: 0; font-family: 'Inter', -apple-system, sans-serif; background: #FAFAF8; color: #111111; -webkit-font-smoothing: antialiased; }
+  body { margin: 0; font-family: 'Inter', -apple-system, sans-serif; background: #FAFAF8; color: #111111; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
   a { color: #111111; text-decoration: none; }
   a:hover { color: #1F6FEB; }
   ::selection { background: #0F172A; color: #FFFFFF; }
@@ -30,8 +30,38 @@
   .footer-link { color: #666666; transition: color .2s; }
   .footer-link:hover { color: #111111; }
 
-  [data-reveal] { transition: opacity .8s cubic-bezier(.16,1,.3,1), transform .8s cubic-bezier(.16,1,.3,1), filter .8s; opacity: 0; transform: translateY(24px); filter: blur(6px); }
-  [data-reveal].is-visible { opacity: 1; transform: none; filter: none; }
+  /* Revelação: só esconde quando o JS de animação está ativo (reveal-js).
+     Se o JS/GSAP falhar, o conteúdo aparece normalmente — nunca fica em branco. */
+  [data-reveal] { transition: opacity .8s cubic-bezier(.16,1,.3,1), transform .8s cubic-bezier(.16,1,.3,1), filter .8s; }
+  .reveal-js [data-reveal] { opacity: 0; transform: translateY(24px); filter: blur(6px); }
+  [data-reveal].is-visible { opacity: 1 !important; transform: none !important; filter: none !important; }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal-js [data-reveal] { opacity: 1; transform: none; filter: none; }
+  }
+
+  /* Compensa a barra fixa ao rolar até âncoras (#servicos, #case, etc.) */
+  section[id], header { scroll-margin-top: 78px; }
+
+  /* Navegação: desktop x mobile */
+  .nav-desktop { display: flex; align-items: center; gap: 32px; }
+  .nav-toggle { display: none; flex-direction: column; justify-content: center; gap: 5px; width: 44px; height: 44px; padding: 0; background: none; border: none; cursor: pointer; }
+  .nav-toggle span { display: block; width: 22px; height: 2px; margin: 0 auto; background: #111111; border-radius: 2px; transition: transform .3s, opacity .3s; }
+  .nav-toggle.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+  .nav-toggle.open span:nth-child(2) { opacity: 0; }
+  .nav-toggle.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+  .nav-mobile { position: fixed; top: 62px; left: 0; right: 0; z-index: 99; display: flex; flex-direction: column; padding: 8px clamp(20px, 5vw, 40px) 22px; gap: 2px; background: rgba(250,250,248,.98); backdrop-filter: blur(16px); border-bottom: 1px solid #ECECEC; opacity: 0; transform: translateY(-12px); pointer-events: none; transition: opacity .28s ease, transform .28s ease; }
+  .nav-mobile.open { opacity: 1; transform: none; pointer-events: auto; }
+  .nav-mobile a { padding: 15px 4px; font-size: 16px; font-weight: 600; color: #111111; border-bottom: 1px solid #F0F0EE; }
+  .nav-mobile a.btn-dark { margin-top: 14px; border: none; border-radius: 10px; text-align: center; padding: 15px; color: #FFFFFF; }
+
+  @media (max-width: 860px) {
+    .nav-desktop { display: none; }
+    .nav-toggle { display: flex; }
+  }
+  @media (min-width: 861px) {
+    .nav-mobile { display: none; }
+  }
 
   .faq-item { border-bottom: 1px solid #ECECEC; }
   .faq-q { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 22px 0; background: none; border: none; cursor: pointer; font-family: inherit; font-size: 16.5px; font-weight: 600; color: #111111; text-align: left; }
@@ -41,6 +71,7 @@
   .faq-item.open .faq-body { max-height: 260px; opacity: 1; }
   .faq-body p { font-size: 15px; color: #666666; line-height: 1.65; margin: 0; padding-bottom: 22px; max-width: 640px; }
 </style>
+<script>document.documentElement.className += ' reveal-js';</script>
 </head>
 <body>
 
@@ -49,7 +80,7 @@
     <img src="logo-icone.png" alt="ImpulsioneAI" style="height: 26px; width: auto; display: block;">
     ImpulsioneAI
   </a>
-  <div style="display: flex; align-items: center; gap: 32px;">
+  <div class="nav-desktop">
     <div style="display: flex; gap: 28px; font-size: 14px; font-weight: 500;">
       <a href="#servicos" class="nav-link">Serviços</a>
       <a href="#case" class="nav-link">Casos</a>
@@ -58,21 +89,32 @@
     </div>
     <a href="https://wa.me/5562992150455" target="_blank" rel="noopener" class="btn-dark" style="padding: 9px 18px; border-radius: 8px; font-size: 13.5px; font-weight: 600;">Agendar conversa</a>
   </div>
+  <button id="navToggle" class="nav-toggle" aria-label="Abrir menu" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
 </nav>
+
+<div id="navMobile" class="nav-mobile">
+  <a href="#servicos" class="nav-link">Serviços</a>
+  <a href="#case" class="nav-link">Casos</a>
+  <a href="#processo" class="nav-link">Processo</a>
+  <a href="#faq" class="nav-link">FAQ</a>
+  <a href="https://wa.me/5562992150455" target="_blank" rel="noopener" class="btn-dark">Agendar conversa</a>
+</div>
 
 <header style="max-width: 1240px; margin: 0 auto; padding: clamp(130px, 16vh, 180px) clamp(20px, 5vw, 40px) clamp(60px, 8vw, 110px); display: grid; grid-template-columns: repeat(auto-fit, minmax(min(460px, 100%), 1fr)); gap: clamp(40px, 6vw, 80px); align-items: center;">
   <div>
-    <div style="display: inline-flex; align-items: center; gap: 8px; border: 1px solid #ECECEC; background: #FFFFFF; border-radius: 100px; padding: 6px 14px; font-size: 12.5px; font-weight: 500; color: #666666; margin-bottom: 28px;">
+    <div data-hero style="display: inline-flex; align-items: center; gap: 8px; border: 1px solid #ECECEC; background: #FFFFFF; border-radius: 100px; padding: 6px 14px; font-size: 12.5px; font-weight: 500; color: #666666; margin-bottom: 28px;">
       <span style="width: 6px; height: 6px; border-radius: 50%; background: #1F6FEB;"></span>
       Agenda aberta para novos projetos
     </div>
-    <h1 style="font-size: clamp(40px, 5.2vw, 64px); font-weight: 800; line-height: 1.04; letter-spacing: -0.035em; margin: 0 0 22px; text-wrap: balance;">A operação digital que empresas sérias merecem.</h1>
-    <p style="font-size: clamp(16px, 1.6vw, 19px); color: #666666; line-height: 1.6; margin: 0 0 36px; max-width: 480px; text-wrap: pretty;">Websites, sistemas SaaS e landing pages — projetados, medidos e otimizados por uma única equipe.</p>
-    <div style="display: flex; gap: 14px; flex-wrap: wrap; align-items: center;">
+    <h1 data-hero style="font-size: clamp(40px, 5.2vw, 64px); font-weight: 800; line-height: 1.04; letter-spacing: -0.035em; margin: 0 0 22px; text-wrap: balance;">A operação digital que empresas sérias merecem.</h1>
+    <p data-hero style="font-size: clamp(16px, 1.6vw, 19px); color: #666666; line-height: 1.6; margin: 0 0 36px; max-width: 480px; text-wrap: pretty;">Websites, sistemas SaaS e landing pages — projetados, medidos e otimizados por uma única equipe.</p>
+    <div data-hero style="display: flex; gap: 14px; flex-wrap: wrap; align-items: center;">
       <a href="https://wa.me/5562992150455" target="_blank" rel="noopener" class="btn-dark" style="padding: 14px 26px; border-radius: 10px; font-size: 15px; font-weight: 600;">Agendar conversa</a>
       <a href="#case" class="btn-outline" style="padding: 14px 22px; border-radius: 10px; font-size: 15px; font-weight: 600;">Ver caso real →</a>
     </div>
-    <p style="margin: 28px 0 0; font-size: 13px; color: #666666;">Resposta em até 24h · Primeira conversa sem custo</p>
+    <p data-hero style="margin: 28px 0 0; font-size: 13px; color: #666666;">Resposta em até 24h · Primeira conversa sem custo</p>
   </div>
 
   <div style="position: relative;" data-reveal>
@@ -399,10 +441,16 @@
   </div>
 </footer>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 <script>
+(function () {
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---------- Barra: fundo ao rolar ----------
   var nav = document.getElementById('mainNav');
   function onScroll() {
-    var s = window.scrollY > 24;
+    var s = window.scrollY > 24 || document.getElementById('navMobile').classList.contains('open');
     nav.style.background = s ? 'rgba(250,250,248,.85)' : 'rgba(250,250,248,0)';
     nav.style.borderBottomColor = s ? '#ECECEC' : 'rgba(236,236,236,0)';
     nav.style.backdropFilter = s ? 'blur(16px)' : 'none';
@@ -410,23 +458,75 @@
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
 
-  var io = new IntersectionObserver(function (entries) {
-    entries.forEach(function (entry) {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('is-visible');
-        io.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.12 });
-  document.querySelectorAll('[data-reveal]').forEach(function (el) {
-    var r = el.getBoundingClientRect();
-    if (r.top < window.innerHeight && r.bottom > 0) {
-      el.classList.add('is-visible');
-    } else {
-      io.observe(el);
-    }
+  // ---------- Menu mobile (hambúrguer) ----------
+  var toggle = document.getElementById('navToggle');
+  var menu = document.getElementById('navMobile');
+  function setMenu(open) {
+    menu.classList.toggle('open', open);
+    toggle.classList.toggle('open', open);
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    menu.style.top = nav.offsetHeight + 'px';
+    onScroll();
+  }
+  toggle.addEventListener('click', function () { setMenu(!menu.classList.contains('open')); });
+  menu.querySelectorAll('a').forEach(function (a) {
+    a.addEventListener('click', function () { setMenu(false); });
   });
+  window.addEventListener('resize', function () { if (window.innerWidth > 860) setMenu(false); });
 
+  // ---------- Revelação ao rolar (à prova de falhas) ----------
+  function reveal(el) { el.classList.add('is-visible'); }
+  var revealEls = Array.prototype.slice.call(document.querySelectorAll('[data-reveal]'));
+
+  function startReveal() {
+    if (reduceMotion) { revealEls.forEach(reveal); return; }
+
+    if (window.gsap && window.ScrollTrigger) {
+      gsap.registerPlugin(ScrollTrigger);
+      // Entrada do hero
+      gsap.set('[data-hero]', { opacity: 0, y: 24 });
+      gsap.to('[data-hero]', { opacity: 1, y: 0, duration: .9, ease: 'power3.out', stagger: .12, delay: .08 });
+      // Seções: revela em lote com leve escalonamento
+      ScrollTrigger.batch('[data-reveal]', {
+        start: 'top 88%',
+        onEnter: function (batch) {
+          batch.forEach(function (el, i) { setTimeout(function () { reveal(el); }, i * 90); });
+        }
+      });
+      ScrollTrigger.refresh();
+    } else {
+      // Fallback sem GSAP: IntersectionObserver
+      if ('IntersectionObserver' in window) {
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) { if (e.isIntersecting) { reveal(e.target); io.unobserve(e.target); } });
+        }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+        revealEls.forEach(function (el) {
+          var r = el.getBoundingClientRect();
+          if (r.top < window.innerHeight && r.bottom > 0) reveal(el); else io.observe(el);
+        });
+      } else {
+        revealEls.forEach(reveal);
+      }
+    }
+  }
+
+  try { startReveal(); } catch (err) { revealEls.forEach(reveal); }
+
+  // Rede de segurança: nada pode ficar escondido
+  window.addEventListener('load', function () {
+    setTimeout(function () {
+      document.querySelectorAll('[data-reveal]:not(.is-visible)').forEach(function (el) {
+        var r = el.getBoundingClientRect();
+        if (r.top < window.innerHeight * 1.1) reveal(el);
+      });
+    }, 400);
+  });
+  setTimeout(function () {
+    document.querySelectorAll('[data-reveal]:not(.is-visible)').forEach(reveal);
+    document.querySelectorAll('[data-hero]').forEach(function (el) { el.style.opacity = '1'; el.style.transform = 'none'; });
+  }, 2500);
+
+  // ---------- FAQ acordeão ----------
   document.querySelectorAll('.faq-item').forEach(function (item) {
     item.querySelector('.faq-q').addEventListener('click', function () {
       var wasOpen = item.classList.contains('open');
@@ -434,6 +534,7 @@
       if (!wasOpen) item.classList.add('open');
     });
   });
+})();
 </script>
 </body>
 </html>
