@@ -346,51 +346,22 @@ const Utils = (() => {
  * STORE — estado + persistência LocalStorage + autosave.
  * ------------------------------------------------------------------ */
 const Store = (() => {
-  const KEY = 'impulsioneai_admin_v1';
+  const KEY = 'impulsioneai_admin_v2';
   const AUTH = 'impulsioneai_admin_auth';
   let db = null;
 
-  const seed = () => {
-    const now = new Date();
-    const mAgo = n => new Date(now.getFullYear(), now.getMonth()-n, 8 + (n%12)).toISOString();
-    const clientes = [
-      {id:Utils.uid(), empresa:'Danilla Dantas Semi Joias', contato:'Danilla', telefone:'5562992150455', email:'contato@danilla.com', nicho:'Moda / Semi joias', tipo:'Site', valorSetup:3500, mensalidade:390, custo:60, status:'Ativo', dataFechamento:mAgo(7), url:'https://danilladantas.com.br', obs:'E-commerce completo, identidade preto e dourado.', tags:['e-commerce','vip']},
-      {id:Utils.uid(), empresa:'DermaClinic', contato:'Dra. Marina', telefone:'5562990000000', email:'contato@dermaclinic.com', nicho:'Estética / Saúde', tipo:'SaaS', valorSetup:6800, mensalidade:790, custo:120, status:'Ativo', dataFechamento:mAgo(5), url:'https://dermaclinic.com.br', obs:'Site + agendamento online.', tags:['saas','agendamento']},
-      {id:Utils.uid(), empresa:'Studio Alba Arquitetura', contato:'Alba', telefone:'5562988887777', email:'alba@studioalba.com', nicho:'Arquitetura', tipo:'Site', valorSetup:2800, mensalidade:250, custo:40, status:'Ativo', dataFechamento:mAgo(4), url:'', obs:'Portfólio institucional.', tags:['institucional']},
-      {id:Utils.uid(), empresa:'FitPro Assessoria', contato:'Bruno', telefone:'5562977776666', email:'bruno@fitpro.com', nicho:'Fitness', tipo:'SaaS', valorSetup:4200, mensalidade:450, custo:80, status:'Ativo', dataFechamento:mAgo(3), url:'', obs:'Área de alunos e cobranças.', tags:['saas']},
-      {id:Utils.uid(), empresa:'Café Central', contato:'Rafael', telefone:'5562966665555', email:'rafa@cafecentral.com', nicho:'Alimentação', tipo:'Site', valorSetup:1800, mensalidade:190, custo:30, status:'Pausado', dataFechamento:mAgo(9), url:'', obs:'Landing + cardápio.', tags:['landing']},
-      {id:Utils.uid(), empresa:'Advocacia Prado', contato:'Dr. Prado', telefone:'5562955554444', email:'contato@prado.adv.br', nicho:'Jurídico', tipo:'Site', valorSetup:3200, mensalidade:320, custo:50, status:'Ativo', dataFechamento:mAgo(2), url:'', obs:'', tags:['institucional']},
-      {id:Utils.uid(), empresa:'PetLar', contato:'Camila', telefone:'5562944443333', email:'camila@petlar.com', nicho:'Pet', tipo:'SaaS', valorSetup:5200, mensalidade:560, custo:90, status:'Ativo', dataFechamento:mAgo(1), url:'', obs:'Agendamento banho e tosa.', tags:['saas','agendamento']},
-      {id:Utils.uid(), empresa:'Boutique Lume', contato:'Sofia', telefone:'5562933332222', email:'sofia@lume.com', nicho:'Moda', tipo:'Site', valorSetup:2400, mensalidade:0, custo:0, status:'Cancelado', dataFechamento:mAgo(10), url:'', obs:'Projeto único, sem recorrência.', tags:['e-commerce']},
-    ];
-    const etapas = ['Novo','Contato iniciado','Reunião marcada','Proposta enviada','Negociação','Fechado','Perdido'];
-    const origem = ['Indicação','Instagram','Google','WhatsApp','Site'];
-    const leads = [
-      {id:Utils.uid(), empresa:'Odonto Sorriso', contato:'Dr. Léo', telefone:'5562911112222', email:'leo@odonto.com', origem:'Indicação', etapa:'Reunião marcada', valor:5800, tags:['saas'], followup:mAgo(-2), criadoEm:mAgo(0), notas:[{ts:mAgo(0),text:'Quer agendamento online.'}]},
-      {id:Utils.uid(), empresa:'Marmoraria Reis', contato:'Reis', telefone:'5562922223333', email:'reis@marmoraria.com', origem:'Google', etapa:'Proposta enviada', valor:3400, tags:['site'], followup:mAgo(-1), criadoEm:mAgo(1), notas:[]},
-      {id:Utils.uid(), empresa:'Academia Impacto', contato:'Talita', telefone:'5562933334444', email:'talita@impacto.com', origem:'Instagram', etapa:'Negociação', valor:6200, tags:['saas','vip'], followup:mAgo(-3), criadoEm:mAgo(1), notas:[{ts:mAgo(0),text:'Aguardando aprovação do sócio.'}]},
-      {id:Utils.uid(), empresa:'Nutri Bianca', contato:'Bianca', telefone:'5562944445555', email:'bianca@nutri.com', origem:'WhatsApp', etapa:'Contato iniciado', valor:2900, tags:['landing'], followup:mAgo(-1), criadoEm:mAgo(0), notas:[]},
-      {id:Utils.uid(), empresa:'Auto Peças Silva', contato:'Silva', telefone:'5562955556666', email:'silva@autopecas.com', origem:'Site', etapa:'Novo', valor:0, tags:[], followup:'', criadoEm:mAgo(0), notas:[]},
-      {id:Utils.uid(), empresa:'Escola Aprender+', contato:'Diretora Ana', telefone:'5562966667777', email:'ana@aprender.com', origem:'Indicação', etapa:'Fechado', valor:4500, tags:['site'], followup:'', criadoEm:mAgo(2), notas:[{ts:mAgo(1),text:'Fechado! Setup pago.'}]},
-    ];
-    const pagamentos = [];
-    // gera receitas recorrentes dos últimos meses a partir das mensalidades
-    clientes.filter(c=>c.status==='Ativo').forEach(c=>{
-      for(let i=0;i<6;i++){
-        const d=new Date(now.getFullYear(),now.getMonth()-i,10);
-        pagamentos.push({id:Utils.uid(),descricao:'Mensalidade · '+c.empresa,tipo:'receita',categoria:'recorrente',valor:c.mensalidade,data:d.toISOString(),clienteId:c.id});
-        if(c.custo) pagamentos.push({id:Utils.uid(),descricao:'Custo · '+c.empresa,tipo:'custo',categoria:'recorrente',valor:c.custo,data:d.toISOString(),clienteId:c.id});
-      }
-    });
-    // setups no mês de fechamento
-    clientes.forEach(c=>{ if(c.valorSetup) pagamentos.push({id:Utils.uid(),descricao:'Setup · '+c.empresa,tipo:'receita',categoria:'unica',valor:c.valorSetup,data:c.dataFechamento,clienteId:c.id}); });
-
-    return {
-      clientes, leads, pagamentos,
-      config:{ agencia:'ImpulsioneAI', whatsapp:'5562992150455', email:'impulsioneaibr@gmail.com', setupPadrao:3500 },
-      meta:{ etapas, origem, criadoEm:new Date().toISOString() }
-    };
-  };
+  // Banco inicial LIMPO — começa vazio, pronto para uso real.
+  const seed = () => ({
+    clientes: [],
+    leads: [],
+    pagamentos: [],
+    config:{ agencia:'ImpulsioneAI', whatsapp:'5562992150455', email:'impulsioneaibr@gmail.com', setupPadrao:3500 },
+    meta:{
+      etapas:['Novo','Contato iniciado','Reunião marcada','Proposta enviada','Negociação','Fechado','Perdido'],
+      origem:['Indicação','Instagram','Google','WhatsApp','Site'],
+      criadoEm:new Date().toISOString()
+    }
+  });
 
   const load = () => {
     try{ const raw = localStorage.getItem(KEY); db = raw ? JSON.parse(raw) : seed(); }
@@ -1042,7 +1013,7 @@ const Config = (() => {
     Utils.$('#cfgSave').onclick=()=>{const o=Object.fromEntries(new FormData(Utils.$('#cfgForm')).entries());o.setupPadrao=+o.setupPadrao||0;Object.assign(Store.get().config,o);Store.saveNow();Toast.ok('Configurações salvas');App.refreshChrome();};
     Utils.$('#bkExport').onclick=Backup.exportJSON;
     Utils.$('#bkImport').onclick=Backup.importJSON;
-    Utils.$('#bkClear').onclick=async()=>{ if(await Modal.confirm('Limpar banco','Isto apaga TODOS os dados (clientes, leads, financeiro) e restaura o exemplo inicial. Tem certeza?',{danger:true,okText:'Apagar tudo'})){Store.reset();Toast.ok('Banco reiniciado');App.go('dashboard');}};
+    Utils.$('#bkClear').onclick=async()=>{ if(await Modal.confirm('Limpar banco','Isto apaga TODOS os dados (clientes, leads, financeiro) e deixa o painel vazio. Tem certeza?',{danger:true,okText:'Apagar tudo'})){Store.reset();Toast.ok('Banco limpo');App.go('dashboard');}};
   };
   return {render};
 })();
