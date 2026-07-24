@@ -109,6 +109,17 @@ input,select,textarea{font-family:inherit;font-size:14px;color:var(--ink);}
 .kpi .chg{font-size:11.5px;font-weight:600;margin-top:6px;color:var(--muted);}
 .kpi .chg.up{color:var(--blue);}
 .kpi .chg.down{color:#B42318;}
+/* KPI clicavel: leva pra tela correspondente ja filtrada */
+.kpi-link{cursor:pointer;position:relative;}
+.kpi-link:hover{border-color:#cfd6e4;box-shadow:0 10px 30px rgba(15,23,42,.09);}
+.kpi-link:focus-visible{outline:2px solid var(--blue);outline-offset:2px;}
+.kpi-link:active{transform:translateY(0);}
+.kpi-ar{display:inline-block;margin-left:4px;opacity:0;transform:translateX(-3px);transition:opacity .2s var(--ease),transform .2s var(--ease);}
+.kpi-link:hover .kpi-ar,.kpi-link:focus-visible .kpi-ar{opacity:1;transform:translateX(0);}
+.tl .row.clickable{cursor:pointer;border-radius:8px;transition:background .18s var(--ease);}
+.tl .row.clickable:hover{background:rgba(15,23,42,.035);}
+.fin-row.clickable{cursor:pointer;transition:background .18s var(--ease);}
+.fin-row.clickable:hover{background:rgba(15,23,42,.035);}
 .section-title{font-size:13px;font-weight:700;letter-spacing:.02em;text-transform:uppercase;color:var(--muted);margin:36px 0 16px;}
 .chart-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px;}
 .chart-head h3{font-size:15px;font-weight:700;margin:0;letter-spacing:-.01em;}
@@ -533,29 +544,40 @@ const Metrics = (() => {
  * DASHBOARD
  * ------------------------------------------------------------------ */
 const Dashboard = (() => {
-  const kpi = (lbl,val,chg,cls='') => `
-    <div class="card kpi">
+  // act = {go:'rota', f:'filtro', tip:'tooltip'} → card vira botão que abre a tela já filtrada
+  const kpi = (lbl,val,chg,cls='',act=null) => `
+    <div class="card kpi${act?' kpi-link':''}"${act?` data-go="${act.go}" data-f="${Utils.esc(act.f||'')}" role="button" tabindex="0" title="${Utils.esc(act.tip||'')}"`:''}>
       <div class="lbl">${lbl}</div>
       <div class="val mono">${val}</div>
-      <div class="chg ${cls}">${chg}</div>
+      <div class="chg ${cls}">${chg}${act?'<span class="kpi-ar">→</span>':''}</div>
     </div>`;
   const render = () => {
     const db = Store.get();
     const mrr=Metrics.mrr(), custos=Metrics.custos(), lucro=mrr-custos;
     const cards = [
-      kpi('Receita recorrente', Utils.money(mrr), '+ MRR ativo', 'up'),
-      kpi('Clientes ativos', Utils.num(Metrics.ativos().length), db.clientes.length+' no total'),
-      kpi('Clientes totais', Utils.num(db.clientes.length), 'base completa'),
-      kpi('Custos mensais', Utils.money(custos), 'operação', 'down'),
-      kpi('Lucro líquido', Utils.money(lucro), (mrr?Math.round(lucro/mrr*100):0)+'% de margem', 'up'),
-      kpi('Receita em setups', Utils.money(Metrics.setupsTotal()), 'acumulado'),
-      kpi('Leads', Utils.num(Metrics.leadsAbertos()), 'em aberto'),
-      kpi('Conversão', Metrics.conversao()+'%', 'leads → clientes', 'up'),
+      kpi('Receita recorrente', Utils.money(mrr), '+ MRR ativo', 'up',
+          {go:'financeiro', f:'receita:recorrente', tip:'Ver receitas recorrentes no Financeiro'}),
+      kpi('Clientes ativos', Utils.num(Metrics.ativos().length), db.clientes.length+' no total',
+          '', {go:'clientes', f:'Ativo', tip:'Ver clientes ativos'}),
+      kpi('Clientes totais', Utils.num(db.clientes.length), 'base completa',
+          '', {go:'clientes', f:'Todos', tip:'Ver toda a base de clientes'}),
+      kpi('Custos mensais', Utils.money(custos), 'operação', 'down',
+          {go:'financeiro', f:'custo:todos', tip:'Ver custos no Financeiro'}),
+      kpi('Lucro líquido', Utils.money(lucro), (mrr?Math.round(lucro/mrr*100):0)+'% de margem', 'up',
+          {go:'financeiro', f:'todos:todos', tip:'Abrir o Financeiro'}),
+      kpi('Receita em setups', Utils.money(Metrics.setupsTotal()), 'acumulado',
+          '', {go:'financeiro', f:'receita:unica', tip:'Ver receitas de setup / projeto'}),
+      kpi('Leads', Utils.num(Metrics.leadsAbertos()), 'em aberto',
+          '', {go:'leads', f:'Em aberto', tip:'Ver leads em aberto'}),
+      kpi('Conversão', Metrics.conversao()+'%', 'leads → clientes', 'up',
+          {go:'leads', f:'Fechados', tip:'Ver leads fechados'}),
     ].join('');
 
-    const chartCard = (id,title,sub) => `
+    const chartCard = (id,title,sub,go='',f='') => `
       <div class="card">
-        <div class="chart-head"><h3>${title}</h3><span>${sub}</span></div>
+        <div class="chart-head"><h3>${title}</h3>
+          ${go?`<span data-chart-go="${go}" data-chart-f="${f}" style="cursor:pointer;color:var(--blue);font-weight:600">${sub} →</span>`
+              :`<span>${sub}</span>`}</div>
         <canvas id="${id}"></canvas>
       </div>`;
 
@@ -565,17 +587,17 @@ const Dashboard = (() => {
 
         <div class="section-title">Desempenho · 12 meses</div>
         <div class="grid" style="grid-template-columns:repeat(2,1fr)">
-          ${chartCard('cFat','Faturamento mensal','Receita total')}
-          ${chartCard('cNov','Novos clientes','Fechamentos por mês')}
-          ${chartCard('cConv','Conversão','Leads fechados / criados')}
-          ${chartCard('cMrr','Receita recorrente','MRR por mês')}
+          ${chartCard('cFat','Faturamento mensal','Receita total','financeiro','receita:todos')}
+          ${chartCard('cNov','Novos clientes','Fechamentos por mês','clientes','Todos')}
+          ${chartCard('cConv','Conversão','Leads fechados / criados','leads','Fechados')}
+          ${chartCard('cMrr','Receita recorrente','MRR por mês','financeiro','receita:recorrente')}
         </div>
 
         <div class="section-title">Movimentação</div>
         <div class="grid" style="grid-template-columns:repeat(3,1fr)">
-          <div class="card"><div class="chart-head"><h3>Clientes recentes</h3></div><div class="tl" id="tlCli"></div></div>
-          <div class="card"><div class="chart-head"><h3>Últimos leads</h3></div><div class="tl" id="tlLead"></div></div>
-          <div class="card"><div class="chart-head"><h3>Próximos follow-ups</h3></div><div class="tl" id="tlFup"></div></div>
+          <div class="card"><div class="chart-head"><h3>Clientes recentes</h3><span data-chart-go="clientes" data-chart-f="Todos" style="cursor:pointer;color:var(--blue);font-weight:600">ver todos →</span></div><div class="tl" id="tlCli"></div></div>
+          <div class="card"><div class="chart-head"><h3>Últimos leads</h3><span data-chart-go="leads" data-chart-f="Todos" style="cursor:pointer;color:var(--blue);font-weight:600">ver funil →</span></div><div class="tl" id="tlLead"></div></div>
+          <div class="card"><div class="chart-head"><h3>Próximos follow-ups</h3><span data-chart-go="leads" data-chart-f="Em aberto" style="cursor:pointer;color:var(--blue);font-weight:600">ver em aberto →</span></div><div class="tl" id="tlFup"></div></div>
         </div>
       </div>`;
 
@@ -588,22 +610,46 @@ const Dashboard = (() => {
     // timelines
     const cli = [...db.clientes].sort((a,b)=>new Date(b.dataFechamento)-new Date(a.dataFechamento)).slice(0,5);
     Utils.$('#tlCli').innerHTML = cli.map(c=>`
-      <div class="row"><div class="dot"></div><div><div class="t">${Utils.esc(c.empresa)}</div>
+      <div class="row clickable" data-cli="${c.id}" title="Abrir cliente"><div class="dot"></div><div><div class="t">${Utils.esc(c.empresa)}</div>
       <div class="d">${Utils.esc(c.tipo)} · ${Utils.money(c.mensalidade)}/mês</div></div>
       <div class="when">${Utils.fmtDate(c.dataFechamento)}</div></div>`).join('') || emptyMini();
     const leads = [...db.leads].sort((a,b)=>new Date(b.criadoEm)-new Date(a.criadoEm)).slice(0,5);
     Utils.$('#tlLead').innerHTML = leads.map(l=>`
-      <div class="row"><div class="dot blue"></div><div><div class="t">${Utils.esc(l.empresa)}</div>
+      <div class="row clickable" data-lead="${l.id}" title="Abrir lead"><div class="dot blue"></div><div><div class="t">${Utils.esc(l.empresa)}</div>
       <div class="d">${Utils.esc(l.etapa)} · ${Utils.esc(l.origem||'—')}</div></div>
       <div class="when">${Utils.fmtDate(l.criadoEm)}</div></div>`).join('') || emptyMini();
     const fups = db.leads.filter(l=>l.followup).sort((a,b)=>new Date(a.followup)-new Date(b.followup)).slice(0,5);
     Utils.$('#tlFup').innerHTML = fups.map(l=>`
-      <div class="row"><div class="dot gray"></div><div><div class="t">${Utils.esc(l.empresa)}</div>
+      <div class="row clickable" data-lead="${l.id}" title="Abrir lead"><div class="dot gray"></div><div><div class="t">${Utils.esc(l.empresa)}</div>
       <div class="d">${Utils.esc(l.contato||'—')}</div></div>
       <div class="when">${Utils.fmtDate(l.followup)}</div></div>`).join('') || emptyMini();
+
+    bind();
   };
+
+  /* liga os cards de KPI, gráficos e linhas das timelines às telas correspondentes */
+  const bind = () => {
+    Utils.$$('#view .kpi-link').forEach(el=>{
+      const fire = () => goTo(el.dataset.go, el.dataset.f);
+      el.onclick = fire;
+      el.onkeydown = e => { if(e.key==='Enter'||e.key===' '){ e.preventDefault(); fire(); } };
+    });
+    Utils.$$('#view [data-chart-go]').forEach(el=>{
+      el.onclick = () => goTo(el.dataset.chartGo, el.dataset.chartF||'');
+    });
+    Utils.$$('#view [data-cli]').forEach(el=>{ el.onclick=()=>{ Clientes.focus('Todos'); App.go('clientes'); Clientes.open(el.dataset.cli); }; });
+    Utils.$$('#view [data-lead]').forEach(el=>{ el.onclick=()=>{ Leads.focus('Todos'); App.go('leads'); Leads.open(el.dataset.lead); }; });
+  };
+
+  const goTo = (route, f) => {
+    if(route==='clientes')   Clientes.focus(f||'Todos');
+    if(route==='leads')      Leads.focus(f||'Todos');
+    if(route==='financeiro') Financeiro.focus(f||'todos:todos');
+    App.go(route);
+  };
+
   const emptyMini = () => '<div class="d" style="padding:10px 0">Sem registros ainda.</div>';
-  return {render};
+  return {render,goTo};
 })();
 
 /* ------------------------------------------------------------------ *
@@ -628,6 +674,14 @@ const Clientes = (() => {
   };
 
   const statusBadge = s => { const m={Ativo:'green',Pausado:'gray',Cancelado:'red',Prospecto:'blue'}; return `<span class="badge ${m[s]||'gray'}"><span class="bd"></span>${Utils.esc(s)}</span>`; };
+
+  /* chamado pelo Dashboard: pré-filtra a tela antes de entrar nela */
+  const focus = (status='Todos') => {
+    statusF = STATUS.includes(status) ? status : 'Todos';
+    tipoF='Todos'; q=''; page=1;
+  };
+  /* abre direto o cadastro de um cliente */
+  const open = id => { const c=Store.get().clientes.find(x=>x.id===id); if(c) form(c); };
 
   const render = () => {
     const all = filtered(); const total=all.length;
@@ -787,7 +841,7 @@ const Clientes = (() => {
       else { if(ch==='"')q=true; else if(ch===','){out.push(cur);cur='';} else cur+=ch; } }
     out.push(cur); return out; };
 
-  return {render};
+  return {render,focus,open};
 })();
 const IconSet_search = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>';
 
@@ -797,17 +851,32 @@ const IconSet_search = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColo
 const Leads = (() => {
   const ETAPAS = ['Novo','Contato iniciado','Reunião marcada','Proposta enviada','Negociação','Fechado','Perdido'];
   const ORIGENS = ['Indicação','Instagram','Google','WhatsApp','Site','Outro'];
-  let q='';
+  // grupos usados pelos atalhos do Dashboard e pelas pills do topo
+  const GRUPOS = {
+    'Todos'    : null,
+    'Em aberto': l => l.etapa!=='Fechado' && l.etapa!=='Perdido',
+    'Fechados' : l => l.etapa==='Fechado',
+    'Perdidos' : l => l.etapa==='Perdido',
+  };
+  let q='', grupoF='Todos';
+
+  const focus = (g='Todos') => { grupoF = GRUPOS[g]!==undefined ? g : 'Todos'; q=''; };
+  const open  = id => { const l=Store.get().leads.find(x=>x.id===id); if(l) form(l); };
 
   const render = () => {
     const db = Store.get();
-    const match = l => !q || [l.empresa,l.contato,l.origem,(l.tags||[]).join(' ')].join(' ').toLowerCase().includes(q.toLowerCase());
+    const gf = GRUPOS[grupoF];
+    const match = l => (!gf || gf(l)) &&
+      (!q || [l.empresa,l.contato,l.origem,(l.tags||[]).join(' ')].join(' ').toLowerCase().includes(q.toLowerCase()));
     Utils.$('#view').innerHTML = `
       <div class="fade-in">
         <div class="toolbar">
           <div class="search" style="min-width:240px">${IconSet_search}<input id="lSearch" placeholder="Buscar lead…" value="${Utils.esc(q)}"></div>
           <div class="grow"></div>
           <button class="btn btn-primary" id="lAdd">${IconSet.plus} Novo lead</button>
+        </div>
+        <div class="toolbar">
+          ${Object.keys(GRUPOS).map(g=>`<button class="pill ${grupoF===g?'active':''}" data-grupo="${g}">${g}</button>`).join('')}
         </div>
         <div class="board">
           ${ETAPAS.map(et=>{
@@ -877,6 +946,7 @@ const Leads = (() => {
   let dragId=null;
   const bind = () => {
     const s=Utils.$('#lSearch'); if(s){s.oninput=Utils.debounce(e=>{q=e.target.value;render();},180);s.focus();s.setSelectionRange(s.value.length,s.value.length);}
+    Utils.$$('[data-grupo]').forEach(b=>b.onclick=()=>{grupoF=b.dataset.grupo;render();});
     Utils.$('#lAdd').onclick=()=>form();
     Utils.$$('.lead').forEach(card=>{
       card.onclick=()=>{ if(card.classList.contains('dragging'))return; form(Store.get().leads.find(l=>l.id===card.dataset.id)); };
@@ -895,24 +965,46 @@ const Leads = (() => {
       };
     });
   };
-  return {render};
+  return {render,focus,open};
 })();
 
 /* ------------------------------------------------------------------ *
  * FINANCEIRO — resumo, fluxo de caixa e lista de pagamentos.
  * ------------------------------------------------------------------ */
 const Financeiro = (() => {
-  let mesF = 'todos';
+  let mesF = 'todos', tipoF = 'todos', catF = 'todos';
+
+  /* chamado pelo Dashboard — recebe "tipo:categoria" (ex.: "receita:recorrente") */
+  const focus = (f='todos:todos') => {
+    const [t,c] = String(f).split(':');
+    tipoF = ['receita','custo'].includes(t) ? t : 'todos';
+    catF  = ['recorrente','unica'].includes(c) ? c : 'todos';
+    mesF  = 'todos';
+  };
+  const filtroAtivo = () => tipoF!=='todos' || catF!=='todos';
+  const rotuloFiltro = () => {
+    const t = {receita:'Receitas', custo:'Custos', todos:'Tudo'}[tipoF];
+    const c = {recorrente:'recorrente', unica:'única / setup', todos:''}[catF];
+    return c ? `${t} · ${c}` : t;
+  };
+
   const render = () => {
     const db = Store.get();
     const meses = Utils.last12();
-    let pays = [...db.pagamentos].sort((a,b)=>new Date(b.data)-new Date(a.data));
-    if(mesF!=='todos') pays = pays.filter(p=>Utils.monthKey(p.data)===mesF);
-    const receita = pays.filter(p=>p.tipo==='receita').reduce((s,p)=>s+ +p.valor,0);
-    const custo = pays.filter(p=>p.tipo==='custo').reduce((s,p)=>s+ +p.valor,0);
-    const recorrente = pays.filter(p=>p.tipo==='receita'&&p.categoria==='recorrente').reduce((s,p)=>s+ +p.valor,0);
-    const unica = pays.filter(p=>p.tipo==='receita'&&p.categoria==='unica').reduce((s,p)=>s+ +p.valor,0);
-    const kpi=(l,v,cls='')=>`<div class="card kpi"><div class="lbl">${l}</div><div class="val mono ${cls}">${v}</div></div>`;
+    // base = só o recorte de mês; os KPIs sempre mostram o mês inteiro
+    let base = [...db.pagamentos].sort((a,b)=>new Date(b.data)-new Date(a.data));
+    if(mesF!=='todos') base = base.filter(p=>Utils.monthKey(p.data)===mesF);
+    const receita = base.filter(p=>p.tipo==='receita').reduce((s,p)=>s+ +p.valor,0);
+    const custo = base.filter(p=>p.tipo==='custo').reduce((s,p)=>s+ +p.valor,0);
+    const recorrente = base.filter(p=>p.tipo==='receita'&&p.categoria==='recorrente').reduce((s,p)=>s+ +p.valor,0);
+    const unica = base.filter(p=>p.tipo==='receita'&&p.categoria==='unica').reduce((s,p)=>s+ +p.valor,0);
+    // lista de lançamentos: aí sim entra o filtro de tipo/categoria
+    let pays = base;
+    if(tipoF!=='todos') pays = pays.filter(p=>p.tipo===tipoF);
+    if(catF!=='todos')  pays = pays.filter(p=>p.categoria===catF);
+
+    const kpi=(l,v,cls='',f='')=>`<div class="card kpi${f?' kpi-link':''}"${f?` data-fin="${f}" role="button" tabindex="0" title="Filtrar lançamentos"`:''}>
+      <div class="lbl">${l}</div><div class="val mono ${cls}">${v}</div></div>`;
 
     Utils.$('#view').innerHTML = `
       <div class="fade-in">
@@ -921,32 +1013,39 @@ const Financeiro = (() => {
             <option value="todos">Todos os meses</option>
             ${meses.slice().reverse().map(m=>`<option value="${m.key}" ${mesF===m.key?'selected':''}>${m.label} ${m.date.getFullYear()}</option>`).join('')}
           </select>
+          ${filtroAtivo()?`<button class="pill active" id="finClear">${Utils.esc(rotuloFiltro())} ✕</button>`:''}
           <div class="grow"></div>
           <button class="btn btn-primary" id="finAdd">${IconSet.plus} Lançamento</button>
         </div>
         <div class="grid" style="grid-template-columns:repeat(4,1fr)">
-          ${kpi('Receita', Utils.money(receita))}
-          ${kpi('Custos', Utils.money(custo))}
-          ${kpi('Lucro', Utils.money(receita-custo), (receita-custo)>=0?'':'amount neg')}
-          ${kpi('Receita recorrente', Utils.money(recorrente))}
+          ${kpi('Receita', Utils.money(receita), '', 'receita:todos')}
+          ${kpi('Custos', Utils.money(custo), '', 'custo:todos')}
+          ${kpi('Lucro', Utils.money(receita-custo), (receita-custo)>=0?'':'amount neg', 'todos:todos')}
+          ${kpi('Receita recorrente', Utils.money(recorrente), '', 'receita:recorrente')}
         </div>
         <div class="grid" style="grid-template-columns:2fr 1fr;margin-top:16px">
           <div class="card"><div class="chart-head"><h3>Fluxo de caixa</h3><span>Saldo mensal · 12 meses</span></div><canvas id="cFluxo"></canvas></div>
           <div class="card">
             <div class="chart-head"><h3>Composição</h3></div>
-            <div class="fin-row"><div class="fi"><div class="ic">R</div><div><div class="cell-strong">Recorrente</div><div class="muted" style="font-size:12px">Mensalidades</div></div></div><div class="amount pos">${Utils.money(recorrente)}</div></div>
-            <div class="fin-row"><div class="fi"><div class="ic">S</div><div><div class="cell-strong">Setups / única</div><div class="muted" style="font-size:12px">Projetos</div></div></div><div class="amount pos">${Utils.money(unica)}</div></div>
-            <div class="fin-row"><div class="fi"><div class="ic">C</div><div><div class="cell-strong">Custos</div><div class="muted" style="font-size:12px">Operação</div></div></div><div class="amount neg">- ${Utils.money(custo)}</div></div>
+            <div class="fin-row clickable" data-fin="receita:recorrente" title="Ver lançamentos recorrentes"><div class="fi"><div class="ic">R</div><div><div class="cell-strong">Recorrente</div><div class="muted" style="font-size:12px">Mensalidades</div></div></div><div class="amount pos">${Utils.money(recorrente)}</div></div>
+            <div class="fin-row clickable" data-fin="receita:unica" title="Ver setups / projetos"><div class="fi"><div class="ic">S</div><div><div class="cell-strong">Setups / única</div><div class="muted" style="font-size:12px">Projetos</div></div></div><div class="amount pos">${Utils.money(unica)}</div></div>
+            <div class="fin-row clickable" data-fin="custo:todos" title="Ver custos"><div class="fi"><div class="ic">C</div><div><div class="cell-strong">Custos</div><div class="muted" style="font-size:12px">Operação</div></div></div><div class="amount neg">- ${Utils.money(custo)}</div></div>
           </div>
         </div>
-        <div class="section-title">Pagamentos</div>
+        <div class="section-title">Pagamentos${filtroAtivo()?' · '+Utils.esc(rotuloFiltro()):''}</div>
         <div class="card" style="padding:8px 22px">
-          ${pays.length? pays.slice(0,40).map(rowHtml).join('') : '<div class="empty"><div class="ill"></div><h4>Sem lançamentos</h4><p>Adicione receitas e custos para acompanhar o fluxo.</p></div>'}
+          ${pays.length? pays.slice(0,40).map(rowHtml).join('') : '<div class="empty"><div class="ill"></div><h4>Sem lançamentos'+(filtroAtivo()?' neste filtro':'')+'</h4><p>Adicione receitas e custos para acompanhar o fluxo.</p></div>'}
         </div>
       </div>`;
     Charts.bars(Utils.$('#cFluxo'), Metrics.fluxoCaixa());
     Utils.$('#finMes').onchange=e=>{mesF=e.target.value;render();};
     Utils.$('#finAdd').onclick=()=>form();
+    const clr=Utils.$('#finClear'); if(clr)clr.onclick=()=>{tipoF='todos';catF='todos';render();};
+    Utils.$$('[data-fin]').forEach(el=>{
+      const fire=()=>{ const [t,c]=el.dataset.fin.split(':'); tipoF=t; catF=c; render(); };
+      el.onclick=fire;
+      el.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); fire(); } };
+    });
     Utils.$$('[data-delp]').forEach(b=>b.onclick=async()=>{ if(await Modal.confirm('Excluir lançamento','Remover este pagamento?',{danger:true,okText:'Excluir'})){const db=Store.get();db.pagamentos=db.pagamentos.filter(p=>p.id!==b.dataset.delp);Store.saveNow();Toast.ok('Removido');render();}});
   };
   const rowHtml = p => `
@@ -978,7 +1077,7 @@ const Financeiro = (() => {
     Utils.$('#pSave').onclick=submit;
     Utils.$('#pForm').addEventListener('submit',e=>{e.preventDefault();submit();});
   };
-  return {render};
+  return {render,focus};
 })();
 
 /* ------------------------------------------------------------------ *
